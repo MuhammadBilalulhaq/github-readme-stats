@@ -128,7 +128,7 @@ export default async function handler(req, res) {
   <text x="${colTotalX}" y="82" font-size="12.5" font-weight="600" fill="${labelColor}" font-family="${fontFamily}" text-anchor="middle">Total Contributions</text>
   <text x="${colTotalX}" y="100" font-size="11" fill="${dateColor}" font-family="${fontFamily}" text-anchor="middle">${fmt(firstDay)} - Present</text>
 
-  <line x1="182" y1="35" x2="182" y2="140" stroke="${dividerColor}" stroke-width="1" />
+  <line x1="160" y1="35" x2="160" y2="140" stroke="${dividerColor}" stroke-width="1" />
 
   <!-- Fire ring -->
   <circle cx="${ringCx}" cy="${ringCy}" r="${ringR}" fill="none" stroke="${dividerColor}" stroke-width="5" />
@@ -140,7 +140,7 @@ export default async function handler(req, res) {
   <text x="${ringCx}" y="${ringCy + ringR + 22}" font-size="12.5" font-weight="600" fill="${fireTextColor}" font-family="${fontFamily}" text-anchor="middle">Current Streak</text>
   <text x="${ringCx}" y="${ringCy + ringR + 38}" font-size="11" fill="${dateColor}" font-family="${fontFamily}" text-anchor="middle">${current > 0 ? fmt(currentStart) + " - " + fmt(currentEnd) : "-"}</text>
 
-  <line x1="278" y1="35" x2="278" y2="140" stroke="${dividerColor}" stroke-width="1" />
+  <line x1="300" y1="35" x2="300" y2="140" stroke="${dividerColor}" stroke-width="1" />
 
   <!-- Longest streak -->
   <text x="${colLongestX}" y="60" font-size="30" font-weight="700" fill="${longestAccent}" font-family="${fontFamily}" text-anchor="middle">${longest}</text>

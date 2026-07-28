@@ -1,7 +1,6 @@
-// File: api/custom-top-langs.js
-// Place this file inside the "api" folder of your forked github-readme-stats repo on GitHub,
-// commit it, and Vercel will auto-deploy. Then it's live at:
-// https://<your-vercel-domain>/api/custom-top-langs?username=ahmed28510
+// File: api/custom-top-langs.js  (replace the existing one with this improved version)
+// Same location: inside the "api" folder of your github-readme-stats fork.
+// Live at: https://<your-vercel-domain>/api/custom-top-langs?username=ahmed28510
 
 const LANG_COLORS = {
   JavaScript: "#f1e05a",
@@ -42,12 +41,14 @@ export default async function handler(req, res) {
   const { username = "ahmed28510" } = req.query;
   const token = process.env.PAT_1;
 
-  const titleColor = "#4dabf7";
-  const textColor = "#ffffff";
-  const percentColor = "#00f5d4";
-  const bgColor = "#0d1117";
-  const borderColor = "#30363d";
-  const trackColor = "#21262d";
+  const bgColorTop = "#0f1420";
+  const bgColorBottom = "#161b28";
+  const borderColor = "#2a3040";
+  const titleColor = "#5aa9ff";
+  const textColor = "#e6e6e6";
+  const percentColor = "#3ddad7";
+  const trackColor = "#1c2230";
+  const fontFamily = "'Segoe UI', Ubuntu, Helvetica, Arial, sans-serif";
 
   try {
     const query = `
@@ -94,41 +95,72 @@ export default async function handler(req, res) {
         color: LANG_COLORS[name] || DEFAULT_COLOR,
       }));
 
-    const barWidth = 300;
-    const barX = 25;
+    // ---- Layout constants ----
+    const cardWidth = 420;
+    const padding = 28;
+    const barX = padding;
+    const barWidth = cardWidth - padding * 2;
+    const barY = 68;
+    const barHeight = 14;
 
+    // ---- Proportional bar segments (with tiny gaps between colors for separation) ----
+    const gap = topLangs.length > 1 ? 2 : 0;
+    const usableWidth = barWidth - gap * (topLangs.length - 1);
     let cursorX = barX;
     const segments = topLangs
-      .map((l) => {
-        const w = (l.percent / 100) * barWidth;
-        const seg = `<rect x="${cursorX}" y="45" width="${w}" height="12" fill="${l.color}" />`;
-        cursorX += w;
+      .map((l, i) => {
+        const w = Math.max((l.percent / 100) * usableWidth, 3);
+        const seg = `<rect x="${cursorX.toFixed(2)}" y="${barY}" width="${w.toFixed(2)}" height="${barHeight}" fill="${l.color}" />`;
+        cursorX += w + gap;
         return seg;
       })
       .join("");
+
+    // ---- Legend: 2 columns, generous spacing, aligned name/percent ----
+    const legendStartY = barY + 46;
+    const rowHeight = 34;
+    const colWidth = (cardWidth - padding * 2) / 2;
 
     const rows = topLangs
       .map((l, i) => {
         const col = i % 2;
         const row = Math.floor(i / 2);
-        const x = barX + col * 150;
-        const y = 90 + row * 26;
+        const x = padding + col * colWidth;
+        const y = legendStartY + row * rowHeight;
         return `
-      <circle cx="${x + 5}" cy="${y - 4}" r="5" fill="${l.color}" />
-      <text x="${x + 16}" y="${y}" font-size="13" fill="${textColor}" font-family="Segoe UI, sans-serif">${l.name}</text>
-      <text x="${x + 16}" y="${y + 15}" font-size="12" fill="${percentColor}" font-family="Segoe UI, sans-serif" font-weight="bold">${l.percent.toFixed(1)}%</text>`;
+      <circle cx="${x + 6}" cy="${y - 4}" r="6" fill="${l.color}" />
+      <text x="${x + 20}" y="${y}" font-size="14" font-weight="600" fill="${textColor}" font-family="${fontFamily}">${l.name}</text>
+      <text x="${x + 20}" y="${y + 17}" font-size="12.5" font-weight="700" fill="${percentColor}" font-family="${fontFamily}">${l.percent.toFixed(1)}%</text>`;
       })
       .join("");
 
-    const cardHeight = 90 + Math.ceil(topLangs.length / 2) * 26 + 20;
+    const rowCount = Math.ceil(topLangs.length / 2);
+    const cardHeight = legendStartY + rowCount * rowHeight + 14;
 
     const svg = `
-<svg width="350" height="${cardHeight}" viewBox="0 0 350 ${cardHeight}" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0.5" y="0.5" width="349" height="${cardHeight - 1}" rx="12" fill="${bgColor}" stroke="${borderColor}" />
-  <text x="25" y="30" font-size="18" font-weight="bold" fill="${titleColor}" font-family="Segoe UI, sans-serif">Most Used Languages</text>
-  <rect x="${barX}" y="45" width="${barWidth}" height="12" rx="6" fill="${trackColor}" />
-  <clipPath id="barClip"><rect x="${barX}" y="45" width="${barWidth}" height="12" rx="6" /></clipPath>
+<svg width="${cardWidth}" height="${cardHeight}" viewBox="0 0 ${cardWidth} ${cardHeight}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${bgColorTop}" />
+      <stop offset="100%" stop-color="${bgColorBottom}" />
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="${cardWidth - 2}" height="${cardHeight - 2}" rx="14"
+        fill="url(#cardBg)" stroke="${borderColor}" stroke-width="1" filter="url(#softShadow)" />
+
+  <!-- accent bar next to title -->
+  <rect x="${padding}" y="24" width="4" height="18" rx="2" fill="${titleColor}" />
+  <text x="${padding + 14}" y="39" font-size="19" font-weight="700" fill="${titleColor}" font-family="${fontFamily}">Most Used Languages</text>
+
+  <!-- track + colored proportional bar -->
+  <rect x="${barX}" y="${barY}" width="${barWidth}" height="${barHeight}" rx="7" fill="${trackColor}" />
+  <clipPath id="barClip"><rect x="${barX}" y="${barY}" width="${barWidth}" height="${barHeight}" rx="7" /></clipPath>
   <g clip-path="url(#barClip)">${segments}</g>
+
   ${rows}
 </svg>`;
 
@@ -138,7 +170,7 @@ export default async function handler(req, res) {
   } catch (err) {
     res.setHeader("Content-Type", "image/svg+xml");
     res.status(200).send(
-      `<svg width="350" height="100" xmlns="http://www.w3.org/2000/svg"><text x="10" y="50" fill="red">Error: ${err.message}</text></svg>`
+      `<svg width="420" height="100" xmlns="http://www.w3.org/2000/svg"><text x="10" y="50" fill="red">Error: ${err.message}</text></svg>`
     );
   }
 }

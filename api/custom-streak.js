@@ -1,20 +1,27 @@
-// File: api/custom-streak.js
-// Place this file inside the "api" folder of your ALREADY WORKING github-readme-stats fork
-// (the same Vercel project that hosts custom-stats.js and custom-top-langs.js).
-// Once committed, it will be live at:
-// https://<your-vercel-domain>/api/custom-streak?username=ahmed28510
+// File: api/custom-streak.js  (REPLACE your existing file with this)
+// Same location: inside the "api" folder of your github-readme-stats fork.
+// Live at: https://<your-vercel-domain>/api/custom-streak?username=ahmed28510
+//
+// This mimics the classic "streak stats" card look (total | current streak with fire ring | longest)
+// but runs on YOUR OWN reliable Vercel deployment - no dependency on the public streak-stats service.
 
 export default async function handler(req, res) {
   const { username = "ahmed28510" } = req.query;
   const token = process.env.PAT_1;
 
-  const bgColor = "#0d1117";
-  const borderColor = "#30363d";
-  const titleColor = "#4dabf7";
-  const numberColor = "#00f5d4";
-  const labelColor = "#ffffff";
-  const fireColor = "#ff6ec7";
-  const dividerColor = "#30363d";
+  const bgColorTop = "#0f1420";
+  const bgColorBottom = "#161b28";
+  const borderColor = "#2a3040";
+  const dividerColor = "#2a3040";
+  const numberColor = "#e6e6e6";
+  const labelColor = "#9aa4b2";
+  const dateColor = "#6b7280";
+  const fireRingColor1 = "#ff9a3c";
+  const fireRingColor2 = "#ff3c78";
+  const fireTextColor = "#ffb347";
+  const totalAccent = "#5aa9ff";
+  const longestAccent = "#3ddad7";
+  const fontFamily = "'Segoe UI', Ubuntu, Helvetica, Arial, sans-serif";
 
   try {
     const query = `
@@ -42,7 +49,6 @@ export default async function handler(req, res) {
     const json = await ghRes.json();
     const weeks = json.data.user.contributionsCollection.contributionCalendar.weeks;
 
-    // Flatten all days in chronological order
     const days = [];
     for (const w of weeks) {
       for (const d of w.contributionDays) {
@@ -50,58 +56,96 @@ export default async function handler(req, res) {
       }
     }
 
-    // Total contributions
     const totalContributions = days.reduce((a, d) => a + d.count, 0);
 
-    // Longest streak (any point in the data)
-    let longest = 0;
-    let running = 0;
+    let longest = 0, running = 0, longestStart = "", longestEnd = "", tempStart = "";
     for (const d of days) {
       if (d.count > 0) {
+        if (running === 0) tempStart = d.date;
         running++;
-        longest = Math.max(longest, running);
+        if (running > longest) {
+          longest = running;
+          longestStart = tempStart;
+          longestEnd = d.date;
+        }
       } else {
         running = 0;
       }
     }
 
-    // Current streak (counting backwards from today/most recent day)
     let current = 0;
+    let currentStart = "";
     for (let i = days.length - 1; i >= 0; i--) {
       if (days[i].count > 0) {
         current++;
+        currentStart = days[i].date;
       } else {
-        // allow "today" to have 0 contributions yet without breaking streak
-        if (i === days.length - 1) continue;
+        if (i === days.length - 1) continue; // allow today with 0 contributions so far
         break;
       }
     }
+    const currentEnd = days.length ? days[days.length - 1].date : "";
+
+    const fmt = (iso) => {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    };
 
     const firstDay = days.length ? days[0].date : "";
-    const lastDay = days.length ? days[days.length - 1].date : "";
+
+    // ---- Layout ----
+    const cardWidth = 460;
+    const cardHeight = 170;
+    const midX = cardWidth / 2;
+    const colTotalX = 105;
+    const colLongestX = cardWidth - 105;
+    const ringCx = midX;
+    const ringCy = 88;
+    const ringR = 46;
 
     const svg = `
-<svg width="450" height="150" viewBox="0 0 450 150" xmlns="http://www.w3.org/2000/svg">
-  <rect x="0.5" y="0.5" width="449" height="149" rx="12" fill="${bgColor}" stroke="${borderColor}" />
+<svg width="${cardWidth}" height="${cardHeight}" viewBox="0 0 ${cardWidth} ${cardHeight}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${bgColorTop}" />
+      <stop offset="100%" stop-color="${bgColorBottom}" />
+    </linearGradient>
+    <linearGradient id="fireRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${fireRingColor1}" />
+      <stop offset="100%" stop-color="${fireRingColor2}" />
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="${cardWidth - 2}" height="${cardHeight - 2}" rx="14"
+        fill="url(#cardBg)" stroke="${borderColor}" stroke-width="1" filter="url(#softShadow)" />
 
   <!-- Total contributions -->
-  <text x="75" y="50" font-size="26" font-weight="bold" fill="${numberColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">${totalContributions}</text>
-  <text x="75" y="72" font-size="12" fill="${labelColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">Total Contributions</text>
-  <text x="75" y="88" font-size="10" fill="#8b949e" font-family="Segoe UI, sans-serif" text-anchor="middle">${firstDay} - present</text>
+  <text x="${colTotalX}" y="60" font-size="30" font-weight="700" fill="${totalAccent}" font-family="${fontFamily}" text-anchor="middle">${totalContributions}</text>
+  <text x="${colTotalX}" y="82" font-size="12.5" font-weight="600" fill="${labelColor}" font-family="${fontFamily}" text-anchor="middle">Total Contributions</text>
+  <text x="${colTotalX}" y="100" font-size="11" fill="${dateColor}" font-family="${fontFamily}" text-anchor="middle">${fmt(firstDay)} - Present</text>
 
-  <line x1="150" y1="30" x2="150" y2="120" stroke="${dividerColor}" stroke-width="1" />
+  <line x1="182" y1="35" x2="182" y2="140" stroke="${dividerColor}" stroke-width="1" />
 
-  <!-- Current streak with fire icon -->
-  <text x="225" y="42" font-size="20" fill="${fireColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">🔥</text>
-  <text x="225" y="65" font-size="26" font-weight="bold" fill="${fireColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">${current}</text>
-  <text x="225" y="87" font-size="12" fill="${labelColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">Current Streak</text>
+  <!-- Fire ring -->
+  <circle cx="${ringCx}" cy="${ringCy}" r="${ringR}" fill="none" stroke="${dividerColor}" stroke-width="5" />
+  <circle cx="${ringCx}" cy="${ringCy}" r="${ringR}" fill="none" stroke="url(#fireRing)" stroke-width="5"
+          stroke-dasharray="${2 * Math.PI * ringR}" stroke-dashoffset="${2 * Math.PI * ringR * 0.08}"
+          stroke-linecap="round" transform="rotate(-90 ${ringCx} ${ringCy})" />
+  <text x="${ringCx}" y="${ringCy - 12}" font-size="20" text-anchor="middle">🔥</text>
+  <text x="${ringCx}" y="${ringCy + 18}" font-size="26" font-weight="700" fill="${fireTextColor}" font-family="${fontFamily}" text-anchor="middle">${current}</text>
+  <text x="${ringCx}" y="${ringCy + ringR + 22}" font-size="12.5" font-weight="600" fill="${fireTextColor}" font-family="${fontFamily}" text-anchor="middle">Current Streak</text>
+  <text x="${ringCx}" y="${ringCy + ringR + 38}" font-size="11" fill="${dateColor}" font-family="${fontFamily}" text-anchor="middle">${current > 0 ? fmt(currentStart) + " - " + fmt(currentEnd) : "-"}</text>
 
-  <line x1="300" y1="30" x2="300" y2="120" stroke="${dividerColor}" stroke-width="1" />
+  <line x1="278" y1="35" x2="278" y2="140" stroke="${dividerColor}" stroke-width="1" />
 
   <!-- Longest streak -->
-  <text x="375" y="50" font-size="26" font-weight="bold" fill="${titleColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">${longest}</text>
-  <text x="375" y="72" font-size="12" fill="${labelColor}" font-family="Segoe UI, sans-serif" text-anchor="middle">Longest Streak</text>
-  <text x="375" y="88" font-size="10" fill="#8b949e" font-family="Segoe UI, sans-serif" text-anchor="middle">best run</text>
+  <text x="${colLongestX}" y="60" font-size="30" font-weight="700" fill="${longestAccent}" font-family="${fontFamily}" text-anchor="middle">${longest}</text>
+  <text x="${colLongestX}" y="82" font-size="12.5" font-weight="600" fill="${labelColor}" font-family="${fontFamily}" text-anchor="middle">Longest Streak</text>
+  <text x="${colLongestX}" y="100" font-size="11" fill="${dateColor}" font-family="${fontFamily}" text-anchor="middle">${longest > 0 ? fmt(longestStart) + " - " + fmt(longestEnd) : "-"}</text>
 </svg>`;
 
     res.setHeader("Content-Type", "image/svg+xml");
@@ -110,7 +154,7 @@ export default async function handler(req, res) {
   } catch (err) {
     res.setHeader("Content-Type", "image/svg+xml");
     res.status(200).send(
-      `<svg width="450" height="100" xmlns="http://www.w3.org/2000/svg"><text x="10" y="50" fill="red">Error: ${err.message}</text></svg>`
+      `<svg width="460" height="100" xmlns="http://www.w3.org/2000/svg"><text x="10" y="50" fill="red">Error: ${err.message}</text></svg>`
     );
   }
 }
